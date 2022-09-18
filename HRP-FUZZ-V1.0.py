@@ -708,8 +708,8 @@ def check_read_overflow_small(elf,call_addr):
 		stackoverflow_size.append(rsi_size+8)
 		stackoverflow_input_size.append(rdx_size)
 		if rdx_size>0x10000:
-			stackoverflow_addr.pop(call_addr)
-			stackoverflow_size.pop(rsi_size+8)
+			stackoverflow_addr.pop()
+			stackoverflow_size.pop()
 			stackoverflow_input_size.append(rdx_size)
 			print("[+]waring: this is maybe an error check")
 		else:
@@ -735,8 +735,8 @@ def check_read_overflow_big(elf,call_addr):
 		stackoverflow_size.append(rsi_size+8)
 		stackoverflow_input_size.append(rdx_size)
 		if rdx_size>0x10000:
-			stackoverflow_addr.pop(call_addr)
-			stackoverflow_size.pop(rsi_size+8)
+			stackoverflow_addr.pop()
+			stackoverflow_size.pop()
 			stackoverflow_input_size.append(rdx_size)
 			print("[+]waring: this is maybe an error check")
 		else:

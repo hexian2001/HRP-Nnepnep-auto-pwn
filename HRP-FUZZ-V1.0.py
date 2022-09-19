@@ -313,6 +313,9 @@ def search_call_what(elf,file_name): #库函数调用地址寻找，危险函数
 	elif "20.04" in found_file_os:
 		file_os=20
 		os_16_flag=0
+	else:
+		print("[+]MAYBE YOU BUILD YOUR BINARY IN OTHER OS,BUT WE DO NOT SUPPORT TO CHECK IT ,SORRY!")
+		exit(0)
 	get_all(elf,file_os)#开始查询库函数是否存在，进行初始化
 	print("")
 	call=((elf.search(b'\xE8')))#全局搜索call指令特征，有误报可能性但是无所谓，下面有公式校验
@@ -421,7 +424,7 @@ def search_call_what(elf,file_name): #库函数调用地址寻找，危险函数
 						print("")
 				elif func_flag[j]=="free":
 					try:
-						free_flag=(elf.read(int(all_addr[i]),0x28).find("\x48\xC7\x04\x02"))
+						free_flag=(elf.read(int(all_addr[i]),0x28).find("\x48\xC7"))
 						if free_flag == -1:
 							print("[+]maybe have UAF!")
 							print("")
@@ -711,7 +714,7 @@ def check_read_overflow_small(elf,call_addr):
 			stackoverflow_addr.pop()
 			stackoverflow_size.pop()
 			stackoverflow_input_size.append(rdx_size)
-			print("[+]waring: this is maybe an error check")
+			print("[+]waring: this is maybe an error check,just like get value from bss.")
 		else:
 			print("")
 	else:
@@ -979,6 +982,9 @@ if __name__ == '__main__':
     try:
     	file_name=sys.argv[1]#外部获取文件名
     	elf=ELF(file_name)
+    	if elf.arch=='i386':
+    		print("[+]WE DO NOT SUPPORT I386 BINARY!")
+    		exit(0)
     except Exception as e:
     	print("[+]not found file,please check your name!")
     else:

@@ -349,6 +349,7 @@ def search_call_what(elf,file_name): #库函数调用地址寻找，危险函数
 				print(hex(all_addr[i])+" call "+(need_addr[j])+" ["+func_flag[j]+"]")
 				if func_flag[j]=="read":
 					check_flag=u64(elf.read(int(all_addr[i]-0x19),7)[6:7].ljust(8,'\x00'))
+					off_by_null=(elf.read(int(all_addr[i]),0x80).find('\xc6\x00\x00'))
 					print("[+]check_flag :"+hex(check_flag))
 					if check_flag == 0xFF: 
 						'''
@@ -358,6 +359,10 @@ def search_call_what(elf,file_name): #库函数调用地址寻找，危险函数
 						check_read_overflow_big(elf,all_addr[i])
 					else:
 						check_read_overflow_small(elf,all_addr[i])
+
+					print("")
+					if off_by_null !=-1:
+						print("[+]MAYBE HAV THE OFF BY NULL BUG!")
 				if func_flag[j]=="gets":#gets检测到直接算溢出
 					print("[+]use gets have stackoverflow!")
 				elif func_flag[j]=="scanf":
@@ -391,10 +396,15 @@ def search_call_what(elf,file_name): #库函数调用地址寻找，危险函数
 							print("")
 				elif func_flag[j]=="printf":
 					'''
-					printf直接检测mov     rdi, rax这句汇编就可以定义成格式化了
+					printf直接检测mov     rdi, rax这句汇编就可以定义成格式化了,还有检测bss段数据
      				'''
 					the_buf=u64(elf.read(int(all_addr[i]-0x8),3).ljust(8,'\x00'))
+					bss_buf=u64(elf.read(int(all_addr[i]-0xc),7)[3:].ljust(8,'\x00'))
 					if the_buf ==0xc78948:
+						print("[+]use pritnf(buf) have format bug!")
+						format_bug_addr.append(int(all_addr[i]))
+						print("")
+					elif bss_buf>0x10000:
 						print("[+]use pritnf(buf) have format bug!")
 						format_bug_addr.append(int(all_addr[i]))
 						print("")

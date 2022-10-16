@@ -66,7 +66,7 @@ mmap 查询长度 地址 权限
 
 ```
 1.read常规溢出rop，未开启pie canary 提供puts write2种模板
-2.栈迁移 getshell利用 未开启 pie canary
+2.栈迁移 getshell利用 未开启 pie canary #不能打通的尝试把脚本内的bss选址改一下以及尝试使用system("/bin/sh")打 不要用onegadget onegadget在Ubuntu20 22上要求比较苛刻
 
 关于模板的讲解：
 这个只是一个模板，注意，注意，注意！
@@ -87,7 +87,7 @@ mmap 查询长度 地址 权限
 
  运行需要依赖pwntools,numpy和python2
 
- pwntools https://github.com/Gallopsled/pwntools
+ pwntools https://github.com/Gallopsled/pwntools #4.5版本
 
 pip install numpy
 

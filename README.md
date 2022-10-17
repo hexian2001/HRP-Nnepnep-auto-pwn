@@ -65,7 +65,7 @@ mmap 查询长度 地址 权限
 功能三:自动化生成EXP模板，列表如下
 
 ```
-1.read常规溢出rop，未开启pie canary 提供puts write2种模板
+1.read常规溢出rop，未开启pie canary 提供puts write2种模板 ，提供ret2libc_orw_puts模板
 2.栈迁移 getshell利用 未开启 pie canary #不能打通的尝试把脚本内的bss选址改一下以及尝试使用system("/bin/sh")打 不要用onegadget onegadget在Ubuntu20 22上要求比较苛刻
 
 关于模板的讲解：

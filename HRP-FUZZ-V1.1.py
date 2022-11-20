@@ -748,7 +748,7 @@ def search_call_what(elf,file_name): #库函数调用地址寻找，危险函数
 					print("")
 	if len(backdoor_addr):#存在后门开启后门rop构造
 		ret2backdoor(file_name,file_os)
-	if len(stackoverflow_addr) and len(backdoor_addr)==0 and (prctl_addr)!=0:#存在溢出但是不存在后门，开启ret2libc rop构造
+	if len(stackoverflow_addr) and len(backdoor_addr)==0 and (prctl_addr)==0:#存在溢出但是不存在后门，开启ret2libc rop构造
 		ret2libc(file_name,file_os)
 	if len(stackoverflow_addr) and len(backdoor_addr)==0 and (prctl_addr):
 		ret2libc_orw(file_name,file_os)

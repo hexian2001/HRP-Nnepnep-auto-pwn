@@ -39,7 +39,9 @@ HRP 和 Nepnep战队
 ## 安装方法
 
 ```
-python 3.6.9以上环境
+python 3.6.9以上环境 pip3
+可以直接运行./install.sh
+也可以如下手动
 
 apt-get update
 apt-get install python3 python3-pip python3-dev git libssl-dev libffi-dev build-essential
@@ -49,6 +51,7 @@ pip3 install claripy
 pip3 install angr
 pip3 install re
 pip3 install capstone
+pip3 install numpy
 
 ```
 

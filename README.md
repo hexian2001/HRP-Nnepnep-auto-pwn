@@ -55,6 +55,18 @@ pip3 install capstone
 
 ## 使用方法
 
+### 视频说明
+
+```
+https://www.bilibili.com/video/BV1Ec411j7J1/?vd_source=fa625999cb95a3474b87f02e1e0f148f
+```
+
+
+
+<iframe height="2000" width="2000" src="//player.bilibili.com/player.html?aid=268703049&bvid=BV1Ec411j7J1&cid=1060836487&page=1" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
+
+
+
 ```
 python3 HRP-FUZZ-2.0.py ./filepath --callback target_addr(HEX) #指定地址回调到主函数
 

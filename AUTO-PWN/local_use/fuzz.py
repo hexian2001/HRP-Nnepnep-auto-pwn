@@ -48,14 +48,14 @@ def find_input_strings(binary_path: str,
         num_inputs = 0
         input_addresses = set()
         conditional_addresses = set()
-
+        for m in list(plt_reverse.keys()):
+            plt_reverse[m-4]=(plt_reverse[m])
+            plt_reverse.pop(m)
         for i, instruction in enumerate(instructions):
             if instruction.mnemonic == 'call':
                 function_addr = int(instruction.op_str, 16)
-
                 if function_addr in plt_reverse:
                     func_name = plt_reverse[function_addr]
-
                     if func_name in input_functions:
                         num_inputs += 1
 

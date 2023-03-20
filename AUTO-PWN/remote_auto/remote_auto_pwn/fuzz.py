@@ -11,7 +11,8 @@ def find_input_strings(binary_path: str,
                        start_addr: int,
                        end_addr: int,
                        target_addr: int,
-                       max_input_size: int) -> Union[None,
+                       max_input_size: int,
+                       file_os: int) -> Union[None,
                                                      List[bytes]]:
     elf = ELF(binary_path)
     code = elf.read(start_addr, end_addr - start_addr)
@@ -37,7 +38,7 @@ def find_input_strings(binary_path: str,
                     var == 0xFFFFFDC9,
                     True))
 
-    def find_num_inputs(project, disassembler, elf, plt_reverse, instructions):
+    def find_num_inputs(project, disassembler, elf, plt_reverse, instructions,file_os):
         input_functions = {
             '__isoc99_scanf',
             'fscanf',
@@ -48,9 +49,10 @@ def find_input_strings(binary_path: str,
         num_inputs = 0
         input_addresses = set()
         conditional_addresses = set()
-        for m in list(plt_reverse.keys()):
-            plt_reverse[m-4]=(plt_reverse[m])
-            plt_reverse.pop(m)
+        if file_os==20:
+            for m in list(plt_reverse.keys()):
+                plt_reverse[m-4]=(plt_reverse[m])
+                plt_reverse.pop(m)
         for i, instruction in enumerate(instructions):
             if instruction.mnemonic == 'call':
                 function_addr = int(instruction.op_str, 16)
@@ -130,7 +132,7 @@ def find_input_strings(binary_path: str,
         return None
 
     num_inputs, conditional_addresses = find_num_inputs(
-        project, disassembler, elf, plt_reverse, instructions)
+        project, disassembler, elf, plt_reverse, instructions,file_os)
     result = find_inputs_to_reach_target(
         project,
         start_addr,
@@ -150,7 +152,7 @@ def find_input_strings(binary_path: str,
 
 if __name__ == "__main__":
     if len(sys.argv) != 6:
-        print("Usage: python3 script.py <binary_path> <start_address> <end_address> <target_address> <max_input_size>")
+        print("Usage: python3 script.py <binary_path> <start_address> <end_address> <target_address> <max_input_size> <file_os>")
         sys.exit(1)
 
     binary_path = sys.argv[1]
@@ -158,10 +160,11 @@ if __name__ == "__main__":
     end_addr = int(sys.argv[3], 16)
     target_addr = int(sys.argv[4], 16)
     max_input_size = int(sys.argv[5])
-
+    file_os = int(sys.argv[5])
     result = find_input_strings(
         binary_path,
         start_addr,
         end_addr,
         target_addr,
-        max_input_size)
+        max_input_size,
+        file_os)

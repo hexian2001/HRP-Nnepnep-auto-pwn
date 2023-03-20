@@ -336,9 +336,9 @@ def solve_read(elf, addr, file_name, file_os):
                                     int(start_addr),
                                     int(end_addr),
                                     int(target_addr),
-                                    1024))
+                                    1024,file_os))
                             auto_pwn_result_list.append(fuzz2.find_input_strings(file_name, int(overturn_Hierarchical_list[addr][0]), int(
-                                User_Function[overturn_Hierarchical_list[addr][0]]), int(addr), 1024))
+                                User_Function[overturn_Hierarchical_list[addr][0]]), int(addr), 1024,file_os))
                         elif mode == '1':
                             auto_pwn_result_list.append(
                                 fuzz.find_input_strings(
@@ -346,9 +346,9 @@ def solve_read(elf, addr, file_name, file_os):
                                     int(start_addr),
                                     int(end_addr),
                                     int(target_addr),
-                                    1024))
+                                    1024,file_os))
                             auto_pwn_result_list.append(fuzz.find_input_strings(file_name, int(overturn_Hierarchical_list[addr][0]), int(
-                                User_Function[overturn_Hierarchical_list[addr][0]]), int(addr), 1024))
+                                User_Function[overturn_Hierarchical_list[addr][0]]), int(addr), 1024,file_os))
                         global auto_pwn_result_list_fix
                         auto_pwn_result_list_fix = [
                             x for sublist in auto_pwn_result_list for x in sublist if x != b'']

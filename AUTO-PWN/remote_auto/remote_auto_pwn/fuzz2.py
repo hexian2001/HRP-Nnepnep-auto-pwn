@@ -104,7 +104,7 @@ def find_input_strings(binary_path: str, start_addr: int, end_addr: int, target_
 
         return None
 
-    num_inputs, conditional_addresses = find_num_inputs(project, disassembler, elf, plt_reverse, instructions)
+    num_inputs, conditional_addresses = find_num_inputs(project, disassembler, elf, plt_reverse, instructions，file_os)
     result = find_inputs_to_reach_target(project, start_addr, end_addr, target_addr, max_input_size, num_inputs, conditional_addresses)
 
     if result is not None:

@@ -81,7 +81,7 @@ python3 remote_auto.py ip port #适用于比赛远程攻击详情见视频
 
 <img width="813" alt="1679060474882" src="https://user-images.githubusercontent.com/72968793/225921629-10644c5e-c90a-4cb7-b779-19e122b6d33d.png">
 
-### 3.一键日远程
+### 3.一键攻击远程
 
 <img width="754" alt="1679236361470" src="https://user-images.githubusercontent.com/72968793/226183001-ea151906-91aa-41e0-b81b-d4ce994c1790.png">
 

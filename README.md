@@ -1,4 +1,3 @@
-#（已过时，暂不打算继续开发，如需autopwn请另寻）
 # HRP-Nnepnep-auto-pwn(墨河)
 
 ## 脚本知识开源声明
